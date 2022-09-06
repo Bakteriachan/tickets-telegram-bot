@@ -13,7 +13,7 @@ from helpers import parse
 def start(update:Update,ctxt:CallbackContext):
     messages = {
         'owner' : {
-            'welcome' : 'Support bot\\.'
+            'welcome' : 'ℹ️ *Main menu\\.*'
         },
         'guest' : {
             'language' : 'Please select a language\\.',
@@ -21,8 +21,10 @@ def start(update:Update,ctxt:CallbackContext):
         }
     }
     if update.effective_user.id in (int(os.getenv('owner')),):
+        keyboard = [['➕ Ticket']]
         update.effective_chat.send_message(
             text = messages.get('owner').get('welcome'),
+            reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True),
             parse_mode = config.PARSEMODE
         )
         return states.ADMIN
