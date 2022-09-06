@@ -85,7 +85,7 @@ main_conv = ConversationHandler(
 
         CallbackQueryHandler(callback=handlers.answer_ticket,pattern=r'answer-ticket-([0-9]+)'),
 
-        MessageHandler(Filters.regex('🚫 Cancel$'), callback = handlers.start)
+        MessageHandler(Filters.regex(r'🚫 Cancel$'), callback = handlers.start)
     ]
 )
 
