@@ -18,12 +18,13 @@ from env_loader import load_env
 
 import handlers
 import states
+from button_filter import BtnFilter
 
 logging.basicConfig(
     level = logging.INFO,format = "[ %(asctime)s ] [ %(name)s ] [ %(levelname)s ]  { %(message)s },"
 )
 
-separator = '\\'
+separator = '\\' # -> windows directories separator
 if platform.startswith('linux'):
     separator = '/'
 
@@ -57,22 +58,25 @@ start_command_handler = CommandHandler('start', handlers.start)
 main_conv = ConversationHandler(
     entry_points = [
         start_command_handler,
-        MessageHandler(filters = Filters.regex(r'➕ Ticket$'), callback = handlers.new_ticket),
+        MessageHandler(filters = BtnFilter(r'➕ Ticket'), callback = handlers.new_ticket),
         CallbackQueryHandler(callback = handlers.select_language,pattern = r'languageselect-[a-zA-Z]+'),
         CallbackQueryHandler(callback=handlers.answer_ticket,pattern=r'answer-ticket-([0-9]+)')
     ],
     states = {
         states.ADMIN : [
-            start_command_handler
+            start_command_handler,
+            MessageHandler(filters = BtnFilter(r'➕ Ticket'), callback = handlers.new_ticket)
         ],
 
         states.PROCESS_TICKET : [
             start_command_handler,
+            MessageHandler(BtnFilter(r'🚫 Cancel'), callback = handlers.start),
             MessageHandler(filters=Filters.all,callback = handlers.process_ticket)
         ],
 
         states.TICKET_CONFIRMATION : [
             start_command_handler,
+            MessageHandler(BtnFilter(r'🚫 Cancel'), callback = handlers.start),
             CallbackQueryHandler(callback = handlers.ticket_confirmation,pattern=r'(confirm|cancel)-ticket')
         ],
 
@@ -85,7 +89,7 @@ main_conv = ConversationHandler(
 
         CallbackQueryHandler(callback=handlers.answer_ticket,pattern=r'answer-ticket-([0-9]+)'),
 
-        MessageHandler(Filters.regex(r'🚫 Cancel$'), callback = handlers.start)
+        MessageHandler(BtnFilter(r'🚫 Cancel'), callback = handlers.start)
     ]
 )
 

@@ -20,6 +20,17 @@ def start(update:Update,ctxt:CallbackContext):
             'main-menu' : 'ℹ️ *Main menu\\.*'
         }
     }
+
+    if ctxt.user_data.get('confirm-ticket',None) is not None:
+        try:
+            ctxt.bot.delete_message(
+                chat_id = update.effective_chat.id,
+                message_id = ctxt.user_data.get('confirm-ticket').message_id
+            )
+            ctxt.user_data.pop('confirm-ticket',None)
+        except Exception:
+            pass
+
     if update.effective_user.id in (int(os.getenv('owner')),):
         keyboard = [['➕ Ticket']]
         update.effective_chat.send_message(
@@ -133,7 +144,7 @@ def process_ticket(update:Update,ctxt:CallbackContext):
         ]
     ]
 
-    update.effective_chat.send_message(
+    ctxt.user_data['confirm-ticket'] = update.effective_chat.send_message(
         text = messages.get('confirm'),
         parse_mode = config.PARSEMODE,
         reply_markup = InlineKeyboardMarkup(inline_keyboard)
@@ -149,6 +160,9 @@ def ticket_confirmation(update:Update,ctxt:CallbackContext):
         return -1
 
     match = re.match(r'(confirm|cancel)-ticket', update.callback_query.data)
+
+    ctxt.user_data.pop('confirm-ticket',None)
+
 
     messages = {
         'error' : "Something went wrong\\. Please try again\\.",
@@ -179,7 +193,7 @@ def ticket_confirmation(update:Update,ctxt:CallbackContext):
         ]
 
         message_text: str
-        if update.message is None:
+        if isinstance(ctxt.user_data.get('ticket'),int):
             message_text = messages.get('owner-message-multimedia').format(
                 user_id = update.effective_user.id,
                 username = parse(update.effective_user.username)
@@ -198,8 +212,7 @@ def ticket_confirmation(update:Update,ctxt:CallbackContext):
             parse_mode = config.PARSEMODE,
             
         ):
-            if update.message is None or \
-                    update.message.text is None:
+            if isinstance(ctxt.user_data.get('ticket'),int):
                 update.effective_chat.copy_message(
                     chat_id = os.getenv('owner'),
                     message_id = ctxt.user_data.get('ticket')
