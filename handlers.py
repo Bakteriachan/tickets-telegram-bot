@@ -1,25 +1,23 @@
 import os
 import re
 
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup
-)
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
+                      ReplyKeyboardMarkup, Update)
 from telegram.ext import CallbackContext
 
 import config
-from helpers import parse
 import states
+from helpers import parse
 
-def start_command_handlers(update:Update,ctxt:CallbackContext):
+
+def start(update:Update,ctxt:CallbackContext):
     messages = {
         'owner' : {
             'welcome' : 'Support bot\\.'
         },
         'guest' : {
             'language' : 'Please select a language\\.',
-            'ticket' : 'Open a new ticket\\.'
+            'main-menu' : 'ℹ️ *Main menu\\.*'
         }
     }
     if update.effective_user.id in (int(os.getenv('owner')),):
@@ -43,30 +41,25 @@ def start_command_handlers(update:Update,ctxt:CallbackContext):
                 reply_markup = InlineKeyboardMarkup(inline_keyboard),
                 parse_mode = config.PARSEMODE
             )
-            return None
+            return -1
         else: 
-            inline_keyboard = [
-                [
-                    InlineKeyboardButton(
-                        text = 'New ticket',
-                        callback_data = 'open-ticket'
-                    )
-                ]
+            keyboard = [
+                ['➕ Ticket']
             ]
 
             update.effective_chat.send_message(
-                text = messages.get('guest').get('ticket'),
-                reply_markup = InlineKeyboardMarkup(inline_keyboard),
+                text = messages.get('guest').get('main-menu'),
+                reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True),
                 parse_mode = config.PARSEMODE
             )
-            return None
+            return -1
 
 def select_language(update:Update,ctxt:CallbackContext):
     if update.callback_query is None:
         return None
     
     messages = {
-        'ticket' : 'Open a new ticket\\.'
+        'main-menu' : 'ℹ️ *Main menu\\.*'
     }
 
     match = re.match(r'languageselect-([a-zA-Z]+)',update.callback_query.data)
@@ -79,27 +72,22 @@ def select_language(update:Update,ctxt:CallbackContext):
     except Exception: # -> if could not delete message
         pass
 
-    inline_keyboard = [
-        [
-            InlineKeyboardButton(
-                text = 'New ticket',
-                callback_data = 'open-ticket'
-            )
-        ]
+    keyboard = [
+        ['➕ Ticket']
     ]
 
     update.effective_chat.send_message(
-        text = messages.get('ticket'),
-        reply_markup = InlineKeyboardMarkup(inline_keyboard),
+        text = messages.get('main-menu'),
+        reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True),
         parse_mode = config.PARSEMODE
     )
 
 def new_ticket(update:Update,ctxt:CallbackContext):
-    if update.callback_query is None:
-        return None
+    if update.message.text is None:
+        return -1
 
     messages = {
-        'ticket-request' : 'Send message\\.'
+        'ticket-request' : '❇️ *Enter the message you want to send to the administration\\.*'
     }
 
     try:
@@ -107,8 +95,12 @@ def new_ticket(update:Update,ctxt:CallbackContext):
     except Exception:
         pass
 
+    keyboard = [
+        ['🚫 Cancel']
+    ]
     update.effective_chat.send_message(
         text = messages.get('ticket-request'),
+        reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True),
         parse_mode = config.PARSEMODE
     )
 
@@ -116,13 +108,14 @@ def new_ticket(update:Update,ctxt:CallbackContext):
     return states.PROCESS_TICKET
 
 def process_ticket(update:Update,ctxt:CallbackContext):
-    if update.message.text is None:
-        return None
 
-    ctxt.user_data['ticket'] = update.message.text
+    if update.message.text is not None:
+        ctxt.user_data['ticket'] = update.message.text
+    else:
+        ctxt.user_data['ticket'] = update.effective_message.message_id
 
     messages = {
-        'confirm' : "Send to administration\\?"
+        'confirm' : "ℹ️ *New message\\.*\n\n*Press \"🚫 Cancel\" if you don't agree\\.*"
     }
 
     inline_keyboard = [
@@ -132,7 +125,7 @@ def process_ticket(update:Update,ctxt:CallbackContext):
                 callback_data = 'confirm-ticket'
             ),
             InlineKeyboardButton(
-                text = '❌ Cancel',
+                text = '🚫 Cancel',
                 callback_data = 'cancel-ticket'
             )
         ]
@@ -157,9 +150,10 @@ def ticket_confirmation(update:Update,ctxt:CallbackContext):
 
     messages = {
         'error' : "Something went wrong\\. Please try again\\.",
-        'owner-message' : 'New ticket\n\nUser ID: `{user_id}`\nUsername : {username}\n\nMessage:\n*{message}*',
-        'succesfuly-sent' : 'Message sent to admins\\.',
-        'succesfuly-canceled' : 'Message sent to admins\\.'
+        'owner-message' : 'ℹ️ *New ticket\\.*\n\nUser ID: `{user_id}`\nUsername: \\@{username}\n\n✉️ *Message:*\n{message}',
+        'owner-message-multimedia' : 'ℹ️ *New ticket\\.*\n\nUser ID: `{user_id}`\nUsername: \\@{username}\n\n✉️ *Message:*',
+        'succesfuly-sent' : '✔️ *Message sent\\.*',
+        'succesfuly-canceled' : '✖️ *Message canceled\\.*'
     }
 
     if match.group(1) in ('confirm',):
@@ -182,21 +176,45 @@ def ticket_confirmation(update:Update,ctxt:CallbackContext):
             ]
         ]
 
+        message_text: str
+        if update.message is None:
+            message_text = messages.get('owner-message-multimedia').format(
+                user_id = update.effective_user.id,
+                username = parse(update.effective_user.username)
+            )
+        else:
+            message_text =  messages.get('owner-message').format(
+                user_id = parse(update.effective_user.id),
+                username = parse(username),
+                message = parse(ctxt.user_data.get('ticket'))
+            )
+
         if ctxt.bot.send_message(
             chat_id = os.getenv('owner'),
-            text = messages.get('owner-message').format(user_id = parse(update.effective_user.id),username = parse(username),message = parse(ctxt.user_data.get('ticket'))),
+            text = message_text,
             reply_markup = InlineKeyboardMarkup(inline_keyboard),
             parse_mode = config.PARSEMODE,
             
         ):
+            if update.message is None or \
+                    update.message.text is None:
+                update.effective_chat.copy_message(
+                    chat_id = os.getenv('owner'),
+                    message_id = ctxt.user_data.get('ticket')
+                )
+
+            keyboard = [['➕ Ticket']]
             update.effective_chat.send_message(
                 text = messages.get('succesfuly-sent'),
-                parse_mode = config.PARSEMODE
+                parse_mode = config.PARSEMODE,
+                reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True)
             )
         else:
+            keyboard = [['➕ Ticket']]
             update.effective_chat.send_message(
                 text = messages.get('error'),
-                parse_mode = config.PARSEMODE
+                parse_mode = config.PARSEMODE,
+                reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True)
             )
         ctxt.user_data.pop('ticket',None)
         return -1
@@ -216,6 +234,7 @@ def answer_ticket(update:Update,ctxt:CallbackContext):
     if update.callback_query is None:
         return None
     if update.effective_user.id not in (int(os.getenv('owner')),):
+        print('a')
         return None
     
     match = re.match(r'answer-ticket-([0-9]+)', update.callback_query.data)
@@ -224,7 +243,7 @@ def answer_ticket(update:Update,ctxt:CallbackContext):
     ctxt.user_data['requester_id'] = requester_id
 
     messages = {
-        'answer' : 'Send message you want to send to user'
+        'answer' : f'❇️ *Enter the message you want to reply to the user: {requester_id}\\.*'
     }
 
     update.effective_chat.send_message(
@@ -232,26 +251,42 @@ def answer_ticket(update:Update,ctxt:CallbackContext):
         parse_mode=config.PARSEMODE
     )
 
+    update.callback_query.answer()
+
     return states.PROCESS_ANSWER
 
 def process_answer(update:Update,ctxt:CallbackContext):
     if update.effective_user.id not in (int(os.getenv('owner')),):
         return -1
     if ctxt.user_data.get('requester_id',None) is None:
-        return -1
+        return states.ADMIN
 
     messages = {
         'error' : 'Could not send message to user, probably he blocked the bot\\.',
-        'succesfuly-sent' : 'Answer succesfuly sent to user with id {user_id}\\.'
+        'succesfuly-sent' : '✔️ *Message sent to `{user_id}`\\.*',
+        'user-notification-text' : 'ℹ️ *Answer from an administrator\\.*\n\n✉️ *Message:* {message}',
+        'user-notification-multimedia' : 'ℹ️ *Answer from an administrator\\.*\n\n✉️ *Message:*'
     }
     
     try:
-        update.effective_message.copy(
-            chat_id = ctxt.user_data.get('requester_id')
+        message_text: str
+        if update.message is None or \
+                update.message.text is None:
+            message_text = messages.get('user-notification-multimedia')
+        else:
+            message_text = messages.get('user-notification-text').format(message=parse(update.message.text))
+        ctxt.bot.send_message(
+            chat_id = ctxt.user_data.get('requester_id'),
+            text =    message_text,
+            parse_mode = config.PARSEMODE
         )
-    except Exception:
+        if update.message.text is None:
+            update.effective_message.copy(
+                chat_id = ctxt.user_data.get('requester_id')
+            )
+    except Exception as e:
         update.effective_chat.send_message(
-            text = message.get('error'),
+            text = messages.get('error'),
             parse_mode = config.PARSEMODE
         )
         return states.ADMIN

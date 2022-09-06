@@ -52,13 +52,14 @@ pick_persistance = PicklePersistence('support_persistance',store_bot_data=False,
 updater = Updater(token=my_bot.token,use_context=True,persistence=pick_persistance)
 dp = updater.dispatcher
 
-start_command_handler = CommandHandler('start', handlers.start_command_handlers)
+start_command_handler = CommandHandler('start', handlers.start)
 
 main_conv = ConversationHandler(
     entry_points = [
         start_command_handler,
-        CallbackQueryHandler(callback = handlers.new_ticket,pattern = 'open-ticket'),
-        CallbackQueryHandler(callback = handlers.select_language,pattern = r'languageselect-[a-zA-Z]+')
+        MessageHandler(filters = Filters.regex(r'➕ Ticket$'), callback = handlers.new_ticket),
+        CallbackQueryHandler(callback = handlers.select_language,pattern = r'languageselect-[a-zA-Z]+'),
+        CallbackQueryHandler(callback=handlers.answer_ticket,pattern=r'answer-ticket-([0-9]+)')
     ],
     states = {
         states.ADMIN : [
@@ -67,7 +68,7 @@ main_conv = ConversationHandler(
 
         states.PROCESS_TICKET : [
             start_command_handler,
-            MessageHandler(filters=Filters.text,callback = handlers.process_ticket)
+            MessageHandler(filters=Filters.all,callback = handlers.process_ticket)
         ],
 
         states.TICKET_CONFIRMATION : [
@@ -84,6 +85,7 @@ main_conv = ConversationHandler(
 
         CallbackQueryHandler(callback=handlers.answer_ticket,pattern=r'answer-ticket-([0-9]+)'),
 
+        MessageHandler(Filters.regex('🚫 Cancel$'), callback = handlers.start)
     ]
 )
 
