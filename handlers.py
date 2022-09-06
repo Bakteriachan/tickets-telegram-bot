@@ -2,7 +2,7 @@ import os
 import re
 
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
-                      ReplyKeyboardMarkup, Update)
+                      ReplyKeyboardMarkup, ReplyKeyboardRemove, Update)
 from telegram.ext import CallbackContext
 
 import config
@@ -18,7 +18,8 @@ def start(update:Update,ctxt:CallbackContext):
         'guest' : {
             'language' : 'Please select a language\\.',
             'main-menu' : 'ℹ️ *Main menu\\.*'
-        }
+        },
+        'operation-canceled' : '✔️ *Operation canceled\\.*'
     }
 
     if ctxt.user_data.get('confirm-ticket',None) is not None:
@@ -28,6 +29,10 @@ def start(update:Update,ctxt:CallbackContext):
                 message_id = ctxt.user_data.get('confirm-ticket').message_id
             )
             ctxt.user_data.pop('confirm-ticket',None)
+            update.effective_chat.send_message(
+                text = messages.get('operation-canceled'),
+                parse_mode = config.PARSEMODE
+            )
         except Exception:
             pass
 
@@ -128,7 +133,8 @@ def process_ticket(update:Update,ctxt:CallbackContext):
         ctxt.user_data['ticket'] = update.effective_message.message_id
 
     messages = {
-        'confirm' : "ℹ️ *New message\\.*\n\n*Press \"🚫 Cancel\" if you don't agree\\.*"
+        'confirm' : "ℹ️ *New message\\.*\n\n*Press \"🚫 Cancel\" if you don't agree\\.*",
+        'processing' : "Processing..."
     }
 
     inline_keyboard = [
@@ -143,6 +149,14 @@ def process_ticket(update:Update,ctxt:CallbackContext):
             )
         ]
     ]
+
+    ctxt.bot.delete_message(
+        chat_id = update.effective_chat.id,
+        message_id = update.effective_chat.send_message(
+            text = messages.get('processing'),
+            reply_markup = ReplyKeyboardRemove()
+        ).message_id
+    )
 
     ctxt.user_data['confirm-ticket'] = update.effective_chat.send_message(
         text = messages.get('confirm'),
