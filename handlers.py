@@ -292,7 +292,7 @@ def process_answer(update:Update,ctxt:CallbackContext):
         return states.ADMIN
 
     messages = {
-        'error' : 'Could not send message to user, probably he blocked the bot\\.',
+        'error' : '❌ *Could not send message to user, probably he blocked the bot\\.*',
         'succesfuly-sent' : '✔️ *Message sent to `{user_id}`\\.*',
         'user-notification-text' : 'ℹ️ *Answer from an administrator\\.*\n\n✉️ *Message:* {message}',
         'user-notification-multimedia' : 'ℹ️ *Answer from an administrator\\.*\n\n✉️ *Message:*'
