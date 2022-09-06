@@ -82,6 +82,7 @@ main_conv = ConversationHandler(
 
         states.PROCESS_ANSWER : [
             start_command_handler,
+            MessageHandler(BtnFilter(r'🚫 Cancel'), callback = handlers.start),
             MessageHandler(Filters.all, handlers.process_answer)
         ]
 

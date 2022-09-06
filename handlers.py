@@ -263,7 +263,6 @@ def answer_ticket(update:Update,ctxt:CallbackContext):
     if update.callback_query is None:
         return None
     if update.effective_user.id not in (int(os.getenv('owner')),):
-        print('a')
         return None
     
     match = re.match(r'answer-ticket-([0-9]+)', update.callback_query.data)
@@ -275,8 +274,10 @@ def answer_ticket(update:Update,ctxt:CallbackContext):
         'answer' : f'❇️ *Enter the message you want to reply to the user: {requester_id}\\.*'
     }
 
+    keyboard = [['🚫 Cancel']]
     update.effective_chat.send_message(
         text = messages.get('answer'),
+        reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True),
         parse_mode=config.PARSEMODE
     )
 
