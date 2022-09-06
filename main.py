@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-from sys import stderr
+from sys import stderr,platform
 import logging
 
 from telegram import Bot
@@ -23,8 +23,12 @@ logging.basicConfig(
     level = logging.INFO,format = "[ %(asctime)s ] [ %(name)s ] [ %(levelname)s ]  { %(message)s },"
 )
 
-curr_path =  os.getcwd()
+separator = '\\'
+if platform.startswith('linux'):
+    separator = '/'
 
+
+curr_path = separator.join(__file__.split(separator)[:-1])
 env = load_env(curr_path)
 
 if os.getenv('TOKEN',None) is None:
