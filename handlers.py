@@ -298,6 +298,8 @@ def process_answer(update:Update,ctxt:CallbackContext):
         'user-notification-multimedia' : 'ℹ️ *Answer from an administrator\\.*\n\n✉️ *Message:*'
     }
     
+    keyboard = [['➕ Ticket']]
+
     try:
         message_text: str
         if update.message is None or \
@@ -317,12 +319,14 @@ def process_answer(update:Update,ctxt:CallbackContext):
     except Exception as e:
         update.effective_chat.send_message(
             text = messages.get('error'),
-            parse_mode = config.PARSEMODE
+            parse_mode = config.PARSEMODE,
+            reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True)
         )
         return states.ADMIN
     else:
         update.effective_chat.send_message(
             text = messages.get('succesfuly-sent').format(user_id=parse(ctxt.user_data.get('requester_id'))),
-            parse_mode = config.PARSEMODE
+            parse_mode = config.PARSEMODE,
+            reply_markup = ReplyKeyboardMarkup(keyboard,resize_keyboard=True)
         )
         return states.ADMIN
