@@ -14,7 +14,6 @@ from telegram.ext import (
     ConversationHandler,
     Filters
 )
-from env_loader import load_env
 
 import handlers
 import states
@@ -24,13 +23,8 @@ logging.basicConfig(
     level = logging.INFO,format = "[ %(asctime)s ] [ %(name)s ] [ %(levelname)s ]  { %(message)s },"
 )
 
-separator = '\\' # -> windows directories separator
-if platform.startswith('linux'):
-    separator = '/'
 
 
-curr_path = separator.join(__file__.split(separator)[:-1])
-env = load_env(curr_path)
 
 if os.getenv('TOKEN',None) is None:
     print('TOKEN environment varible not specified',file=stderr)
